@@ -20,9 +20,10 @@ type Front struct {
 }
 
 var (
-	tomlOpen = []byte("+++")
-	yamlOpen = []byte("---")
-	errYAML  = errors.New("vibe-doc uses TOML front-matter delimited by `+++ … +++`; YAML-style `---` blocks are not supported")
+	tomlOpen  = []byte("+++")
+	tomlClose = []byte("\n+++")
+	yamlOpen  = []byte("---")
+	errYAML   = errors.New("vibe-doc uses TOML front-matter delimited by `+++ … +++`; YAML-style `---` blocks are not supported")
 )
 
 // Parse returns the parsed Front, the remaining body bytes, and any error.
@@ -44,7 +45,7 @@ func Parse(src []byte) (Front, []byte, error) {
 	if len(rest) > 0 && rest[0] == '\n' {
 		rest = rest[1:]
 	}
-	closeIdx := bytes.Index(rest, append([]byte{'\n'}, tomlOpen...))
+	closeIdx := bytes.Index(rest, tomlClose)
 	if closeIdx < 0 {
 		return Front{}, nil, fmt.Errorf("front-matter: unclosed +++ block")
 	}

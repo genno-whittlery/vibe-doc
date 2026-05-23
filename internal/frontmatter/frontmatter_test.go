@@ -65,6 +65,24 @@ func TestMalformedTOMLReturnsError(t *testing.T) {
 	}
 }
 
+// Trailing whitespace on the closing +++ line is tolerated (the search
+// needle `\n+++` still matches). The body keeps the trailing space as its
+// first char, which renderers harmlessly ignore. This guards against a
+// regression that would either drop the close or error.
+func TestParseTOMLTrailingWhitespaceOnFence(t *testing.T) {
+	src := []byte("+++\ntitle = \"X\"\n+++ \n# Body\n")
+	fm, body, err := Parse(src)
+	if err != nil {
+		t.Fatalf("expected to parse despite trailing space, got err: %v", err)
+	}
+	if fm.Title != "X" {
+		t.Errorf("Title = %q, want X", fm.Title)
+	}
+	if !contains(string(body), "# Body") {
+		t.Errorf("body should contain # Body header, got %q", string(body))
+	}
+}
+
 func startsWith(b []byte, s string) bool { return len(b) >= len(s) && string(b[:len(s)]) == s }
 func contains(s, sub string) bool {
 	for i := 0; i+len(sub) <= len(s); i++ {
