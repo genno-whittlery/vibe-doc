@@ -8,6 +8,7 @@ import (
 	"html/template"
 	"io/fs"
 	"net/http"
+	"sync"
 
 	"github.com/genno-whittlery/vibe-doc/assets"
 	"github.com/genno-whittlery/vibe-doc/internal/config"
@@ -27,6 +28,7 @@ type Server struct {
 	sidebar   []sidebar.Node
 	searchIdx *search.Index
 	sse       *SSEHub
+	mu        sync.RWMutex
 }
 
 func New(cfg config.Config, log *logger.Logger) (*Server, error) {
@@ -142,5 +144,7 @@ func (s *Server) rebuildSidebar() {
 		}
 		trees = append(trees, tree)
 	}
+	s.mu.Lock()
 	s.sidebar = trees
+	s.mu.Unlock()
 }

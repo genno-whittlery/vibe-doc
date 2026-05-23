@@ -80,12 +80,15 @@ func (s *Server) renderMarkdownFile(w http.ResponseWriter, r *http.Request, absP
 	}
 
 	htmlStr := string(html)
+	s.mu.RLock()
+	sb := s.sidebar
+	s.mu.RUnlock()
 	data := pageData{
 		SiteTitle:  "vibe-doc",
 		Title:      pickTitle(fm.Title, toc),
 		HTML:       template.HTML(htmlStr),
 		TOC:        toc,
-		Sidebar:    s.sidebar,
+		Sidebar:    sb,
 		HasMermaid: strings.Contains(htmlStr, `class="mermaid"`),
 		HasMath:    strings.Contains(htmlStr, `class="math`),
 	}
@@ -97,7 +100,7 @@ func (s *Server) renderMarkdownFile(w http.ResponseWriter, r *http.Request, absP
 		return
 	}
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
-	w.Header().Set("X-Vibe-Mount", strings.TrimRight(s.mountForPath(r.URL.Path), "/"))
+	w.Header().Set("X-Vibe-Mount", s.mountForPath(r.URL.Path))
 	_, _ = w.Write(buf.Bytes())
 }
 
@@ -149,11 +152,14 @@ func (s *Server) renderDirListing(w http.ResponseWriter, r *http.Request, absPat
 	}
 	html.WriteString("</ul>")
 
+	s.mu.RLock()
+	sb2 := s.sidebar
+	s.mu.RUnlock()
 	data := pageData{
 		SiteTitle: "vibe-doc",
 		Title:     path.Base(r.URL.Path),
 		HTML:      template.HTML(html.String()),
-		Sidebar:   s.sidebar,
+		Sidebar:   sb2,
 	}
 	var buf bytes.Buffer
 	if err := s.tpl.ExecuteTemplate(&buf, "base.html", data); err != nil {
@@ -165,7 +171,10 @@ func (s *Server) renderDirListing(w http.ResponseWriter, r *http.Request, absPat
 }
 
 func (s *Server) serve404(w http.ResponseWriter, r *http.Request) {
-	suggestions := s.searchIdx.Search(path.Base(r.URL.Path))
+	s.mu.RLock()
+	idx := s.searchIdx
+	s.mu.RUnlock()
+	suggestions := idx.Search(path.Base(r.URL.Path))
 	if len(suggestions) > 3 {
 		suggestions = suggestions[:3]
 	}

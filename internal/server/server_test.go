@@ -74,6 +74,22 @@ func TestDocStaticAsset(t *testing.T) {
 	}
 }
 
+func TestRedirectBareFolderToTrailingSlash(t *testing.T) {
+	srv := newTestServer(t, map[string]string{
+		"README.md":     "# Home",
+		"sub/README.md": "# Sub",
+	})
+	req := httptest.NewRequest("GET", "/sub", nil)
+	rec := httptest.NewRecorder()
+	srv.mux.ServeHTTP(rec, req)
+	if rec.Code != 301 {
+		t.Errorf("expected 301 redirect for /sub → /sub/, got %d", rec.Code)
+	}
+	if loc := rec.Header().Get("Location"); loc != "/sub/" {
+		t.Errorf("Location = %q, want /sub/", loc)
+	}
+}
+
 func TestPathTraversalRejected(t *testing.T) {
 	srv := newTestServer(t, map[string]string{"README.md": "# Home"})
 	req := httptest.NewRequest("GET", "/../etc/passwd", nil)
