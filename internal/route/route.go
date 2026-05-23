@@ -50,16 +50,18 @@ type Result struct {
 //	"foo/"          → file /docs/foo/README.md → index.md → dir listing
 //	"foo/bar"       → file /docs/foo/bar.md
 //	"missing"       → not found
+//
+// sub MUST be URL-decoded by the caller; Resolve does not percent-decode.
+// os.Stat follows symlinks, so a symlink inside root that points outside
+// root will be served — caller is responsible for choosing safe roots.
 func Resolve(root, sub string) (Result, error) {
-	// Reject .. traversal hard before touching disk.
+	// filepath.Clean collapses ".." segments before the path ever reaches
+	// disk — this is the traversal defense, not any later check.
 	cleaned := filepath.ToSlash(filepath.Clean("/" + sub))
 	if cleaned == "/" {
 		cleaned = ""
 	} else {
 		cleaned = strings.TrimPrefix(cleaned, "/")
-	}
-	if cleaned == ".." || strings.HasPrefix(cleaned, "../") {
-		return Result{Kind: KindNotFound}, nil
 	}
 
 	trailingSlash := strings.HasSuffix(sub, "/") || sub == ""
