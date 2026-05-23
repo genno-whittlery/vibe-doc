@@ -1,10 +1,16 @@
-# vibe-doc — Session Handoff (2026-05-23)
+# vibe-doc — Session Handoff (2026-05-23, late afternoon)
 
-> **Status:** Tasks 1-3 of 19 complete. Tasks 4-19 remain. Resume in a fresh Claude Code session pointed at this repo. The original implementation plan is at `~/proj/puzzle-platform/docs/superpowers/plans/2026-05-23-vibe-doc.md` and includes a "Plan Revision 2" addendum at the end that supersedes parts of several tasks.
+> **Status:** Tasks 1-16 of 19 complete. Tasks 17-19 (smoke test, cutover, GitHub release) remain — these involve running the binary against a real doc tree, killing the VitePress server, and tagging a public v0.1.0 release. They need a human in the loop.
 
 ## Why this handoff exists
 
-The implementation plan is 19 tasks across 10 phases, each requiring 3-4 subagent dispatches under the `superpowers:subagent-driven-development` skill (implementer + spec-compliance reviewer + code-quality reviewer + sometimes a fix loop). The original session ran out of context capacity around Task 3. Rather than continue partway and risk a stuck session mid-task, the user opted for a clean break and fresh-session resumption. This file is the operator's manual for picking up where we left off.
+The first 16 tasks built the binary from nothing to a feature-complete doc server: multi-mount HTTP routing, longest-prefix matching, embedded assets, goldmark + Mermaid + math rendering, TOC extraction, BM25 search with 50ms timeout cap, sidebar tree builder, shadow detection, fsnotify recursive watch with 100ms debounce, SSE live-reload, sitemap, did-you-mean 404, and an offline link checker subcommand.
+
+The remaining 3 tasks (17, 18, 19) are migration + release work:
+
+- **Task 17** runs `vibe-doc` on `:4001` against `puzzle-platform/docs` alongside the still-running VitePress on `:4000`. The point is a manual sanity check — does the sidebar look right, do the engine-symlink pages resolve, do code blocks render, does search behave. Headless tests cannot answer those questions; a human has to look at a browser.
+- **Task 18** is the cutover: when Task 17 passes, stop VitePress, delete `docs/.vitepress/` + `docs/package.json`, swap `npm run docs:dev` to point at `vibe-doc`, restart `:4000`. This is irreversible work in a different repo (`puzzle-platform`) and should be sequenced when the user has bandwidth to verify.
+- **Task 19** is the public release: README polish, real upstream Mermaid/KaTeX bundles in `assets/static/`, version bump to `0.1.0` in `cmd/vibe-doc/main.go`, `git tag v0.1.0`, `gh release create`. Branding moment — needs the user's voice.
 
 ## Current state (verified clean)
 
@@ -12,133 +18,141 @@ The implementation plan is 19 tasks across 10 phases, each requiring 3-4 subagen
 |---|---|
 | Repo | `~/genno/vibe-doc/` |
 | Branch | `main` |
-| HEAD | `10c402f` |
-| Commits ahead of origin | 3 (need to push) |
-| GitHub | `https://github.com/genno-whittlery/vibe-doc` (Task 1 pushed up; Tasks 2-3 are local-only until next push) |
+| HEAD | `5c6c44b` |
+| Push state | up to date with `origin/main` |
+| GitHub | `https://github.com/genno-whittlery/vibe-doc` |
 | `go build ./...` | Clean |
-| `go test -race ./...` | All packages pass |
+| `go test -race ./...` | All 14 packages green |
 | `go vet ./...` | Clean |
+| Smoke (`./vibe-doc check`) | Reports broken links, exit 1 on failures |
 
-### Commits
+## Packages implemented
 
-```
-10c402f  feat(logger): mutex-protected rotating file logger with level gating
-aee6d34  fix(config): drop bogus // indirect on toml dep + test non-feature ~user/x
-e378618  feat(config): TOML config + ParseMountFlag with ~ expansion
-7b4baa9  feat: scaffold vibe-doc — single Go binary, /__health, version subcommand
-```
+| Package | Lines | Role |
+|---|---|---|
+| `cmd/vibe-doc` | ~150 | CLI: serve / check / version / help |
+| `internal/config` | ~100 | TOML + flag parsing, `~` expansion |
+| `internal/logger` | ~110 | Mutex-protected rotating file logger |
+| `internal/mount` | ~80 | Longest-prefix URL routing |
+| `internal/route` | ~100 | URL → file resolution (§4 table) |
+| `internal/walk` | ~50 | Symlink-following FS walk with cycle detection |
+| `internal/frontmatter` | ~80 | TOML `+++` parser; YAML `---` is fatal |
+| `internal/render` | ~150 | goldmark + Mermaid + math + TOC |
+| `internal/server` | ~600 | HTTP server, handlers, SSE, fsnotify watcher |
+| `internal/sidebar` | ~140 | Auto-generated sidebar tree from FS |
+| `internal/shadow` | ~120 | README/index, mount-overlap, same-root detection |
+| `internal/search` | ~290 | BM25 inverted index + section boost + 50ms timeout |
+| `internal/sitemap` | ~60 | `/sitemap.xml` generator |
+| `internal/check` | ~110 | Offline link verifier |
+| `assets/` | — | Embedded CSS + JS + HTML templates |
 
-### Packages implemented
+**Total**: ~2,200 LOC plus tests, single static binary.
 
-- `cmd/vibe-doc/main.go` — CLI skeleton (`serve` / `check` / `version` / `help`); `serve` registers `/__health` returning `ok\n`, listens on `127.0.0.1:<--port>` (default 4000). `check` is still a placeholder (Task 16 fills it in).
-- `internal/config/` — TOML config + `--mount URL=PATH` flag parser + `~` home-dir expansion. 6 tests passing.
-- `internal/logger/` — mutex-protected rotating file logger; INFO/WARN/ERROR levels with level gating; rotates to `<path>.old` on size exceeded. 4 tests passing under `-race`.
+## What works end-to-end (tested)
 
-### What is NOT yet implemented
+- `vibe-doc serve --mount /=./docs --port 4000` brings up the server.
+- `/__health` returns `ok`.
+- `/` and `/<path>/` render markdown with sidebar + TOC + Mermaid + KaTeX placeholders.
+- `/static/*` under a mount root serves doc-tree assets.
+- `/<bare-folder>` 301-redirects to trailing-slash form.
+- `/sitemap.xml` returns valid XML urlset across all mounts.
+- `/__search?q=<term>` returns BM25-ranked JSON with 50ms timeout.
+- `/__shadow` returns JSON of conflict detector output.
+- `/__events` is an EventSource stream; fsnotify changes broadcast `data: reload`.
+- 404 includes did-you-mean suggestions from the search index.
+- `vibe-doc check` reports broken internal links with line numbers, exit 1 on issues.
 
-- Mount routing (`internal/mount/`) — Task 4
-- URL → file resolution (`internal/route/`) — Task 5
-- Filesystem walk (`internal/walk/`) — Task 6
-- Front-matter parser (`internal/frontmatter/`) — Task 7
-- Markdown rendering (`internal/render/`) — Task 8
-- HTTP server + embedded assets (`internal/server/`, `assets/`) — Task 9
-- Sidebar tree (`internal/sidebar/`) — Task 10
-- Shadow detection (`internal/shadow/`) — Task 11
-- Search inverted index (`internal/search/`) — Task 12
-- Search endpoint + UI — Task 13
-- fsnotify + SSE auto-reload — Task 14
-- `/sitemap.xml` (`internal/sitemap/`) — Task 15
-- `vibe-doc check` subcommand (`internal/check/`) — Task 16
-- Migration into puzzle-platform docs — Tasks 17-18
-- README polish + v0.1.0 release — Task 19
+## What's NOT done
+
+- **Task 17 (side-by-side smoke):** create `~/proj/puzzle-platform/vibe-doc.toml` with `port = 4001` + mount entries for `docs/` and `engine/`; run the binary alongside VitePress and click through pages. See plan §3784.
+- **Task 18 (cutover):** when Task 17 passes, stop VitePress, swap `:4000`, delete `docs/.vitepress/`, update `package.json` scripts. See plan §3790+ for the 8-step migration plan.
+- **Task 19 (release):** drop real upstream Mermaid + KaTeX bundles into `assets/static/` (currently placeholder text); polish README; bump version constant in `cmd/vibe-doc/main.go` from `0.0.1-dev` to `0.1.0`; tag + GitHub release. See plan §3900+.
 
 ## How to resume
 
-In a fresh Claude Code session, invoke:
-
-```
-/cd ~/genno/vibe-doc
-```
-
-Then either:
-
-### Option A — Subagent-driven (recommended for thoroughness)
-
-```
-Resume executing the vibe-doc plan from Task 4 onward. Plan at
-/Users/mindos/proj/puzzle-platform/docs/superpowers/plans/2026-05-23-vibe-doc.md
-— the Plan Revision 2 addendum at the bottom supersedes affected steps.
-Current HEAD is 10c402f (Tasks 1-3 done). Use subagent-driven-development.
-```
-
-The agent should read `HANDOFF.md` first for state, then dispatch the Task 4 implementer.
-
-### Option B — Inline (faster, less review)
-
-Same prompt but with "use executing-plans" instead of "subagent-driven-development." Trades the per-task spec + quality review for batch execution.
-
-### Option C — Manual (if you want to drive)
-
-The plan's full text is in the markdown — Task 4 onward is mostly mechanical Go + TDD if you've read the spec. You can implement task-by-task yourself, using the plan as a checklist.
-
-## Critical things a resumed session MUST know
-
-1. **Plan Revision 2 at the bottom of the plan supersedes parts of several original tasks.** In particular:
-   - Task 9's original `staticSubFS()` is a compile error — use `fs.Sub(assets.FS, "static")` per Revision 2.
-   - Task 9's original test file has a broken `mustListen` stub — use the corrected `httptest.NewRecorder` form.
-   - Task 9's page handler must execute the `base.html` template (sidebar + TOC + conditional Mermaid/Math script loading). Original task wrote raw `<!DOCTYPE html>` strings; that's wrong.
-   - Task 12's `Add()` was hand-rolled; use `AddDoc(IndexedDoc{Headings, Tags})` from Revision 2 for BM25 section boost.
-   - Task 13's search-index population was hand-waved; Revision 2 has the concrete `rebuildSearchIndex()` code.
-   - Task 14's fsnotify watcher must walk recursively and use 100ms debounce per Revision 2.
-   - Tasks 9, 11, 17 expect Server.New() to run `shadow.Scan` at startup and honor `--strict`.
-
-2. **Git identity must stay Genno.** Already configured locally in `~/genno/vibe-doc/`:
-   - `user.name = Genno`
-   - `user.email = genno@whittlery.io`
-   Verify with `git config --local user.name`. Don't use the global Mindos identity here.
-
-3. **SSH alias for GitHub push.** Remote is `git@github-genno:genno-whittlery/vibe-doc.git`. Don't change it. Push with `git push origin main` — there are 3 unpushed commits (Tasks 2, 3, 3-fix).
-
-4. **Test before commit.** Every task in the plan has a `go test -race` step. Honor it. The mutex-protected logger especially needs `-race`.
-
-5. **Discipline: don't pre-empt later tasks.** Each task touches a specific set of files. Tasks 2 and 3 deliberately did NOT modify `cmd/vibe-doc/main.go` — Task 9 wires everything together. Resist the urge to thread the logger into main.go before Task 9.
-
-## Known follow-ups (logged, not blocking)
-
-From the code reviewer's notes during the original session:
-
-**Minor (defer to v0.1.0 cleanup):**
-- `main.go:54` — `w.Write` return ignored; use `_, _ = w.Write(...)` for linter cleanliness
-- README links to `docs/quickstart.md` + `docs/spec.md` are broken (those files don't exist yet; Task 19 creates them)
-- `.gitignore` uses anchored `/vibe-doc` and `/vibe-doc.exe` — correct fix; the plan still shows unanchored (worth back-porting to plan text)
-- `logger.write()` reads `l.level` without mutex — safe today (no setter); add atomic if a setter ever lands
-- `logger.New()` ignores `f.Stat()` error — practically unreachable on a just-opened file
-
-**v0.1.1 work explicitly deferred from v0.1.0 (already documented in Plan Revision 2's release-notes block):**
-- Pagefind benchmark against the hand-rolled BM25
-- Pagination on `/__search` (currently hard-capped at 50)
-- External HTTP link checking in `vibe-doc check`
-- Light theme via `--theme` flag
-- Recursive symlink loop multi-hop test
-- Mount-root-disappears-mid-run explicit test
-
-## Push state before next session
-
-Before resuming, push Tasks 2-3 to GitHub so the remote is current:
+### Option A — Manual Task 17 (recommended next step)
 
 ```bash
 cd ~/genno/vibe-doc
-git push origin main
+go build -o /usr/local/bin/vibe-doc ./cmd/vibe-doc  # or wherever your PATH expects
+
+cd ~/proj/puzzle-platform
+cat > vibe-doc.toml <<'EOF'
+port = 4001
+log = "/tmp/vibe-doc.log"
+log_max_bytes = 1048576
+log_level = "info"
+
+[[mounts]]
+url = "/"
+root = "/Users/mindos/proj/puzzle-platform/docs"
+
+[[mounts]]
+url = "/engine"
+root = "/Users/mindos/proj/engine/docs"
+EOF
+
+vibe-doc serve &
+open https://riddlery.tail1d7c51.ts.net:4001/   # or http://127.0.0.1:4001/
 ```
 
-Expected: push 3 commits (e378618, aee6d34, 10c402f) to the existing `main` branch.
+Click around. Things to look for:
+- Sidebar tree under each mount section.
+- Engine symlink target resolves (vibe-doc resolves symlinks; no `fs.allow` dance needed).
+- Code blocks, Mermaid blocks, math blocks render or at least don't error.
+- `/__shadow` shows any real conflicts in your tree.
+- Search finds known terms.
 
-## TaskList state (for continuation)
+### Option B — Continue with another Claude session
 
-The puzzle-platform TaskList tracker has 19 tasks (IDs 7-25). Tasks 1-3 are marked completed. Task 4 (#9 in tracker, "Mount struct + longest-prefix routing") is the next to claim.
+Point a fresh session at this repo, ask it to read `HANDOFF.md`, and tell it to either resume Task 17 (`Task 17 onward, use executing-plans`) or jump straight to Task 19 if you've already done 17/18 manually.
 
-In a fresh session, you can re-create the task list or query the existing one — the IDs are persistent.
+## Critical things a resumed session MUST know
+
+1. **Git identity stays Genno.** `git config --local user.name` should print `Genno`; `user.email` should be `genno@whittlery.io`. Don't use Mindos here.
+2. **SSH remote alias is `github-genno`.** Don't change it.
+3. **Templates load by filename, not by `New(...)` name.** Use `tpl.ExecuteTemplate("base.html", data)`, not `"base"`. This was a real bug fixed in Task 9.
+4. **`mul` / `sub` template funcs accept `any` and coerce to float64.** `TOCEntry.Level` is `int`; pure-float funcs error.
+5. **Server has `mu sync.RWMutex`.** `s.sidebar` and `s.searchIdx` reads/writes go through it. Task 14's fsnotify goroutine relies on this for safety.
+6. **Test discipline:** every package has `go test -race` as the gate. Honour it.
+
+## Known follow-ups (logged, not blocking)
+
+- **Sidebar symlink cycles.** `buildChildren` uses `os.Stat` (follows symlinks) without inode-visited tracking. A malformed doc tree with a symlink loop in a subdirectory could stack-overflow. The standalone `walk` package handles this correctly; sidebar could be migrated to use it. Not a real-world risk in friendly trees.
+- **`os.Stat` errors silently dropped** in `internal/walk/walk.go`. A permission-denied subtree looks identical to an empty subtree. Worth a `errors.Is(err, fs.ErrPermission)` branch.
+- **Search index rebuild scans every mount on every fsnotify event.** Per-file invalidation would scale better; current behavior is fine for hundreds of files but would chug at thousands.
+- **Mermaid + KaTeX placeholders.** `assets/static/{mermaid,katex}.min.js` are one-line comments. Task 19 must replace with real upstream bundles before the v0.1.0 release.
+- **Anchor verification deferred** in `vibe-doc check` — `[link](#foo)` accepted without checking if `#foo` exists in the target doc.
+
+## Commit history (Tasks 1-16)
+
+```
+5c6c44b feat(check): offline link verifier subcommand
+486017a feat(sitemap): /sitemap.xml endpoint walking every mount
+b6d5d18 feat(sse): live-reload SSE + recursive fsnotify watcher with 100ms debounce
+a07bacb feat(search): /__search endpoint + 50ms timeout + index populator + search.js UI
+c7d5b52 feat(search): BM25 inverted index, section boost, 50ms timeout, swap-path contract
+f8071bb feat(shadow): README/index, mount-overlap, same-root detection per §7
+fefabe1 feat(sidebar): walk filesystem, README group titles, front-matter ordering
+80ea538 fix(server): add Server.mu (race readiness for Task 14), X-Vibe-Mount sentinel, redirect test
+40fa5a2 feat(server): HTTP routing + page render + embedded static + base template
+c4d05cc fix(render): tighten inline-math regex, robust mermaid close, full TOC text
+c35bdc5 feat(render): goldmark + Mermaid + math preprocessing + TOC extraction
+7281ea0 perf(frontmatter): precompute close needle; add trailing-ws fence test
+fc074f5 feat(frontmatter): TOML +++ parser; YAML --- is a hard error
+00ff53e feat(walk): symlink-following filesystem walk with cycle detection
+ce86490 refactor(route): drop dead traversal guard, document URL-decode + symlink contracts
+c13a7f3 feat(route): URL → file resolution matching spec §4 table
+880ab74 test(mount): cover non-boundary prefix (/engineroom != /engine mount)
+e2f7174 feat(mount): longest-prefix-match routing with sorted Set
+10c402f feat(logger): mutex-protected rotating file logger with level gating
+aee6d34 fix(config): drop bogus // indirect on toml dep + test non-feature ~user/x
+e378618 feat(config): TOML config + ParseMountFlag with ~ expansion
+7b4baa9 feat: scaffold vibe-doc — single Go binary, /__health, version subcommand
+```
+
+All pushed to `git@github-genno:genno-whittlery/vibe-doc.git`.
 
 ## Contact for questions
 
-User: mindos (puzzle-platform owner) / Genno (this repo's persona). Spec, plan, and survey are all committed in `~/proj/puzzle-platform/docs/`.
+User: Mindos (puzzle-platform owner) / Genno (this repo's persona). Spec, plan + Revision 2, survey are all in `~/proj/puzzle-platform/docs/{specs,plans,research}/`.
