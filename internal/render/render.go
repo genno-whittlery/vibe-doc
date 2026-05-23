@@ -81,15 +81,22 @@ func extractTOC(doc ast.Node, src []byte) []TOCEntry {
 			return ast.WalkContinue, nil
 		}
 		var textBuf bytes.Buffer
-		for c := h.FirstChild(); c != nil; c = c.NextSibling() {
-			if tn, ok := c.(*ast.Text); ok {
+		ast.Walk(h, func(child ast.Node, entering bool) (ast.WalkStatus, error) {
+			if !entering {
+				return ast.WalkContinue, nil
+			}
+			if tn, ok := child.(*ast.Text); ok {
 				textBuf.Write(tn.Segment.Value(src))
 			}
-		}
+			return ast.WalkContinue, nil
+		})
 		id, _ := h.AttributeString("id")
 		idStr := ""
-		if id != nil {
-			idStr = string(id.([]byte))
+		switch v := id.(type) {
+		case []byte:
+			idStr = string(v)
+		case string:
+			idStr = v
 		}
 		out = append(out, TOCEntry{
 			ID:    idStr,
@@ -102,9 +109,9 @@ func extractTOC(doc ast.Node, src []byte) []TOCEntry {
 }
 
 var (
-	mermaidRe  = regexp.MustCompile("(?s)```mermaid\\s*\n(.*?)\n```")
+	mermaidRe  = regexp.MustCompile("(?s)```mermaid\\s*\n(.*?)\n```[ \\t]*(?:\n|$)")
 	blockMath  = regexp.MustCompile(`(?s)\$\$(.+?)\$\$`)
-	inlineMath = regexp.MustCompile(`\$([^\$\n]+?)\$`)
+	inlineMath = regexp.MustCompile(`\$([^\$\n\s][^\$\n]*?[^\$\n\s]|\S)\$`)
 )
 
 func preprocessMermaid(src []byte) []byte {

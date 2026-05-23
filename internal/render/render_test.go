@@ -5,6 +5,46 @@ import (
 	"testing"
 )
 
+// Regression: $50 and $60 in prose must NOT be wrapped as math.
+func TestRenderInlineMathDoesNotEatPrices(t *testing.T) {
+	r := New()
+	html, _, err := r.Render([]byte("cost was $50 and $60\n"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if strings.Contains(string(html), `class="math"`) {
+		t.Errorf("prices wrongly wrapped as math: %s", html)
+	}
+}
+
+// Mermaid fence with trailing whitespace on close still matches.
+func TestRenderMermaidTrailingSpaceOnClose(t *testing.T) {
+	r := New()
+	src := "```mermaid\ngraph TD;\n  A-->B;\n```   \n"
+	html, _, err := r.Render([]byte(src))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(string(html), `class="mermaid"`) {
+		t.Errorf("expected mermaid pre even with trailing close-fence space: %s", html)
+	}
+}
+
+// Heading with inline code should produce TOC text containing the code.
+func TestTOCWithInlineCodeInHeading(t *testing.T) {
+	r := New()
+	_, toc, err := r.Render([]byte("## Use `sdk.world`\n"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(toc) != 1 {
+		t.Fatalf("expected 1 TOC entry, got %d", len(toc))
+	}
+	if !strings.Contains(toc[0].Text, "sdk.world") {
+		t.Errorf("expected sdk.world in TOC text, got %q", toc[0].Text)
+	}
+}
+
 func TestRenderBasic(t *testing.T) {
 	r := New()
 	html, toc, err := r.Render([]byte("# Title\n\nBody **bold**.\n"))
