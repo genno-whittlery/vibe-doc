@@ -1,0 +1,7 @@
+/vibe-doc
+/vibe-doc.exe
+/dist/
+*.log
+.DS_Store
+.idea/
+.vscode/
