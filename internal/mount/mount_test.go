@@ -19,6 +19,7 @@ func TestLongestPrefixMatch(t *testing.T) {
 	}{
 		{"/", "/a", ""},
 		{"/foo", "/a", "foo"},
+		{"/engineroom", "/a", "engineroom"},
 		{"/engine", "/b", ""},
 		{"/engine/", "/b", ""},
 		{"/engine/foo", "/b", "foo"},
