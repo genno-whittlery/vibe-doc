@@ -1,0 +1,11 @@
+{{define "content"}}
+{{.HTML}}
+{{end}}
+
+{{define "sidebar"}}
+{{range .}}
+{{if .IsLeaf}}<a href="{{.URL}}">{{.Title}}</a>
+{{else}}<div class="group"><a href="{{.URL}}">{{.Title}}</a></div>
+{{template "sidebar" .Children}}{{end}}
+{{end}}
+{{end}}

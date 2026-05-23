@@ -1,0 +1,30 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{{.Title}}{{if .Title}} · {{end}}{{.SiteTitle}}</title>
+  <link rel="stylesheet" href="/__static/style.css">
+  {{if .HasMath}}<link rel="stylesheet" href="/__static/katex.min.css">{{end}}
+</head>
+<body>
+  <div class="layout">
+    <nav class="sidebar">
+      <div class="searchbox"><input type="search" id="search" placeholder="search…"></div>
+      {{template "sidebar" .Sidebar}}
+    </nav>
+    <main>
+      {{template "content" .}}
+    </main>
+    <aside class="toc">
+      {{if .TOC}}
+        <strong>on this page</strong>
+        {{range .TOC}}<a href="#{{.ID}}" style="padding-left: {{mul (sub .Level 1) 0.7}}rem">{{.Text}}</a>{{end}}
+      {{end}}
+    </aside>
+  </div>
+  {{if .HasMermaid}}<script type="module">import m from "/__static/mermaid.min.js"; m.initialize({startOnLoad:true, theme:"dark"});</script>{{end}}
+  {{if .HasMath}}<script defer src="/__static/katex.min.js" onload="renderMathInElement(document.body)"></script>{{end}}
+  <script src="/__static/auto-reload.js" defer></script>
+</body>
+</html>

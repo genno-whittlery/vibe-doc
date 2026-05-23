@@ -1,11 +1,16 @@
 package main
 
 import (
+	"context"
 	"flag"
 	"fmt"
-	"log"
-	"net/http"
 	"os"
+	"os/signal"
+	"syscall"
+
+	"github.com/genno-whittlery/vibe-doc/internal/config"
+	"github.com/genno-whittlery/vibe-doc/internal/logger"
+	"github.com/genno-whittlery/vibe-doc/internal/server"
 )
 
 const version = "0.0.1-dev"
@@ -17,7 +22,7 @@ func main() {
 	}
 	switch os.Args[1] {
 	case "serve":
-		serveCmd(os.Args[2:])
+		os.Exit(serveCmd(os.Args[2:]))
 	case "check":
 		fmt.Fprintln(os.Stderr, "check: not yet implemented")
 		os.Exit(1)
@@ -36,21 +41,70 @@ func usage() {
 	fmt.Fprintln(os.Stderr, "vibe-doc — personal web doc system that just works")
 	fmt.Fprintln(os.Stderr, "")
 	fmt.Fprintln(os.Stderr, "usage:")
-	fmt.Fprintln(os.Stderr, "  vibe-doc serve [--port N] [--mount URL=PATH]...")
-	fmt.Fprintln(os.Stderr, "  vibe-doc check")
+	fmt.Fprintln(os.Stderr, "  vibe-doc serve [--port N] [--config PATH] [--mount URL=PATH]...")
+	fmt.Fprintln(os.Stderr, "  vibe-doc check [--config PATH]")
 	fmt.Fprintln(os.Stderr, "  vibe-doc version")
 }
 
-func serveCmd(args []string) {
+type stringList []string
+
+func (s *stringList) String() string         { return fmt.Sprint(*s) }
+func (s *stringList) Set(value string) error { *s = append(*s, value); return nil }
+
+func serveCmd(args []string) int {
 	fs := flag.NewFlagSet("serve", flag.ExitOnError)
-	port := fs.Int("port", 4000, "HTTP port")
+	cfgPath := fs.String("config", "vibe-doc.toml", "TOML config path")
+	port := fs.Int("port", 0, "HTTP port (overrides config)")
+	var mountFlags stringList
+	fs.Var(&mountFlags, "mount", "URL=PATH; may be repeated")
 	if err := fs.Parse(args); err != nil {
-		os.Exit(2)
+		return 2
 	}
-	http.HandleFunc("/__health", func(w http.ResponseWriter, r *http.Request) {
-		w.Write([]byte("ok\n"))
-	})
-	addr := fmt.Sprintf("127.0.0.1:%d", *port)
-	fmt.Printf("vibe-doc %s — serving on http://%s\n", version, addr)
-	log.Fatal(http.ListenAndServe(addr, nil))
+
+	cfg := config.Default()
+	if _, err := os.Stat(*cfgPath); err == nil {
+		c, err := config.LoadFile(*cfgPath)
+		if err != nil {
+			fmt.Fprintln(os.Stderr, err)
+			return 2
+		}
+		cfg = c
+	}
+	if *port != 0 {
+		cfg.Port = *port
+	}
+	for _, mf := range mountFlags {
+		m, err := config.ParseMountFlag(mf)
+		if err != nil {
+			fmt.Fprintln(os.Stderr, err)
+			return 2
+		}
+		cfg.Mounts = append(cfg.Mounts, m)
+	}
+	if len(cfg.Mounts) == 0 {
+		fmt.Fprintln(os.Stderr, "no mounts configured. pass --mount or create vibe-doc.toml.")
+		return 2
+	}
+
+	log, err := logger.New(cfg.Log, cfg.LogMaxBytes, logger.LevelFromString(cfg.LogLevel))
+	if err != nil {
+		fmt.Fprintln(os.Stderr, "logger:", err)
+		return 2
+	}
+	defer log.Close()
+
+	srv, err := server.New(cfg, log)
+	if err != nil {
+		fmt.Fprintln(os.Stderr, "server:", err)
+		return 2
+	}
+
+	ctx, cancel := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
+	defer cancel()
+
+	if err := srv.Run(ctx); err != nil {
+		fmt.Fprintln(os.Stderr, "run:", err)
+		return 1
+	}
+	return 0
 }
