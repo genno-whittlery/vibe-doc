@@ -8,6 +8,7 @@ import (
 	"os/signal"
 	"syscall"
 
+	"github.com/genno-whittlery/vibe-doc/internal/check"
 	"github.com/genno-whittlery/vibe-doc/internal/config"
 	"github.com/genno-whittlery/vibe-doc/internal/logger"
 	"github.com/genno-whittlery/vibe-doc/internal/server"
@@ -24,8 +25,7 @@ func main() {
 	case "serve":
 		os.Exit(serveCmd(os.Args[2:]))
 	case "check":
-		fmt.Fprintln(os.Stderr, "check: not yet implemented")
-		os.Exit(1)
+		os.Exit(checkCmd(os.Args[2:]))
 	case "version", "--version", "-v":
 		fmt.Println(version)
 	case "help", "--help", "-h":
@@ -50,6 +50,27 @@ type stringList []string
 
 func (s *stringList) String() string         { return fmt.Sprint(*s) }
 func (s *stringList) Set(value string) error { *s = append(*s, value); return nil }
+
+func checkCmd(args []string) int {
+	fs := flag.NewFlagSet("check", flag.ExitOnError)
+	cfgPath := fs.String("config", "vibe-doc.toml", "TOML config path")
+	jsonOut := fs.Bool("format-json", false, "emit JSON instead of plain text")
+	_ = fs.Parse(args)
+	cfg, err := config.LoadFile(*cfgPath)
+	if err != nil {
+		fmt.Fprintln(os.Stderr, err)
+		return 2
+	}
+	n, err := check.Run(cfg, os.Stdout, *jsonOut)
+	if err != nil {
+		fmt.Fprintln(os.Stderr, err)
+		return 1
+	}
+	if n > 0 {
+		return 1
+	}
+	return 0
+}
 
 func serveCmd(args []string) int {
 	fs := flag.NewFlagSet("serve", flag.ExitOnError)
