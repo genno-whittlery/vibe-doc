@@ -109,3 +109,14 @@ func TestExpandHomeInMountFlag(t *testing.T) {
 		t.Errorf("Root = %q, expected expansion", m.Root)
 	}
 }
+
+func TestExpandHomeIgnoresNamedUserForm(t *testing.T) {
+	// ~/x and ~ expand; ~user/x is intentionally NOT supported.
+	for _, input := range []string{"~alice/x", "~bob", "/absolute/no-tilde", "relative/path"} {
+		t.Run(input, func(t *testing.T) {
+			if got := expandHome(input); got != input {
+				t.Errorf("expandHome(%q) = %q, want unchanged", input, got)
+			}
+		})
+	}
+}
