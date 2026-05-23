@@ -99,3 +99,23 @@ func TestPathTraversalRejected(t *testing.T) {
 		t.Errorf("path traversal leaked system file")
 	}
 }
+
+func TestSitemapEndpoint(t *testing.T) {
+	srv := newTestServer(t, map[string]string{
+		"README.md": "# Home",
+		"foo.md":    "# Foo",
+	})
+	req := httptest.NewRequest("GET", "/sitemap.xml", nil)
+	rec := httptest.NewRecorder()
+	srv.mux.ServeHTTP(rec, req)
+	if rec.Code != 200 {
+		t.Fatalf("status = %d", rec.Code)
+	}
+	body := rec.Body.String()
+	if !strings.Contains(body, "<urlset") {
+		t.Errorf("missing urlset: %s", body)
+	}
+	if !strings.Contains(body, "foo") {
+		t.Errorf("missing foo URL: %s", body)
+	}
+}

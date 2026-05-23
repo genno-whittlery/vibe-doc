@@ -1,9 +1,18 @@
 package server
 
-import "net/http"
+import (
+	"fmt"
+	"net/http"
 
-// handleSitemap serves /sitemap.xml. STUB: returns 501. Task 15 walks the
-// mounts and emits XML urlset.
+	"github.com/genno-whittlery/vibe-doc/internal/sitemap"
+)
+
+// handleSitemap serves /sitemap.xml — a flat urlset over every .md file
+// across every mount.
 func (s *Server) handleSitemap(w http.ResponseWriter, r *http.Request) {
-	http.Error(w, "sitemap: not yet implemented", http.StatusNotImplemented)
+	w.Header().Set("Content-Type", "application/xml; charset=utf-8")
+	baseURL := fmt.Sprintf("http://%s", r.Host)
+	if err := sitemap.Generate(w, baseURL, s.mounts); err != nil {
+		s.log.Error("sitemap: %v", err)
+	}
 }
