@@ -23,8 +23,8 @@
       {{end}}
     </aside>
   </div>
-  {{if .HasMermaid}}<script type="module">import m from "/__static/mermaid.min.js"; m.initialize({startOnLoad:true, theme:"dark"});</script>{{end}}
-  {{if .HasMath}}<script defer src="/__static/katex.min.js" onload="renderMathInElement(document.body)"></script>{{end}}
+  {{if .HasMermaid}}<script src="/__static/mermaid.min.js" onload="mermaid.initialize({startOnLoad:false, theme:'dark'}); mermaid.run({querySelector:'pre.mermaid'})"></script>{{end}}
+  {{if .HasMath}}<script defer src="/__static/katex.min.js" onload="document.querySelectorAll('span.math').forEach(s=>{try{katex.render(s.textContent,s,{throwOnError:false,displayMode:s.classList.contains('math-block')})}catch(e){console.warn('katex:',e)}})"></script>{{end}}
   <script src="/__static/search.js" defer></script>
   <script src="/__static/auto-reload.js" defer></script>
 </body>
