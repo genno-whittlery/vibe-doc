@@ -9,8 +9,8 @@ binary, no Node, no build step.
 
 VitePress / Docusaurus / MkDocs are excellent at what they do, but they each
 ship config-system complexity and plugin churn that's overkill for the
-"see my docs at a path" case. vibe-doc is for that case — and is the tool
-that now serves the puzzle-platform docs site after the VitePress cutover.
+"see my docs at a path" case. vibe-doc is for that case — small, opinionated,
+single-binary.
 
 ## Quickstart
 
@@ -49,11 +49,12 @@ vibe-doc version
 ## What's in 0.1.0
 
 - **Routing** — longest-prefix mount match; `README.md` is the folder index;
-  bare-folder URLs 301 to the trailing-slash form (spec §4 table).
+  bare-folder URLs 301 to the trailing-slash form.
 - **Renderer** — goldmark + GFM (tables, strikethrough, task lists, footnotes)
   + auto heading IDs + a table of contents extracted per page.
-- **Mermaid + math** — fenced ```mermaid blocks and `$inline$` / `$$display$$`
-  math hydrate client-side via the embedded Mermaid + KaTeX bundles.
+- **Mermaid + math** — fenced `mermaid` code blocks and `$inline$` /
+  `$$display$$` math hydrate client-side via the embedded Mermaid + KaTeX
+  bundles.
 - **Sidebar** — auto-generated from the file tree under each mount; group
   titles from each directory's `README.md`; leaf titles from each file's
   first `#` heading or TOML `+++ title = "..." +++` frontmatter.
@@ -77,13 +78,16 @@ vibe-doc version
 - No anchor verification in `vibe-doc check` (`[link](#section)` accepted
   without checking the anchor exists). Planned for 0.2.
 
-## Spec + design
+## Built with
 
-The spec lives at
-[`docs/superpowers/specs/2026-05-23-vibe-doc-design.md`](https://github.com/genno-whittlery/vibe-doc/tree/main)
-in the parent puzzle-platform repo (where it was authored). The 19-task
-implementation plan, the executing-plans skill that drove the work, and the
-HANDOFF.md from the build run are all in the vibe-doc repo's git history.
+[goldmark](https://github.com/yuin/goldmark) (Markdown rendering),
+[BurntSushi/toml](https://github.com/BurntSushi/toml) (config),
+[fsnotify](https://github.com/fsnotify/fsnotify) (live reload), and the
+upstream [Mermaid](https://github.com/mermaid-js/mermaid) +
+[KaTeX](https://github.com/KaTeX/KaTeX) libraries (bundled, no CDN runtime).
+
+See the [GitHub Releases](https://github.com/genno-whittlery/vibe-doc/releases)
+page for the per-version changelog.
 
 ## Issues
 
