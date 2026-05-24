@@ -30,7 +30,8 @@ type Node struct {
 // urlPrefix is the mount's URL (e.g. "/" or "/engine"). root is the
 // filesystem path the mount is rooted at. display is the mount's display
 // name (sidebar section title); falls back to the prefix basename.
-func Build(display, urlPrefix, root string) (Node, error) {
+// exclude lists directory basenames to skip entirely.
+func Build(display, urlPrefix, root string, exclude []string) (Node, error) {
 	if display == "" {
 		display = mountTitle(urlPrefix)
 	}
@@ -39,12 +40,21 @@ func Build(display, urlPrefix, root string) (Node, error) {
 		Title: display,
 		URL:   urlPrefix + "/",
 	}
-	children, err := buildChildren(urlPrefix, root)
+	children, err := buildChildren(urlPrefix, root, exclude)
 	if err != nil {
 		return Node{}, err
 	}
 	tree.Children = children
 	return tree, nil
+}
+
+func isExcluded(name string, exclude []string) bool {
+	for _, e := range exclude {
+		if e == name {
+			return true
+		}
+	}
+	return false
 }
 
 func mountTitle(prefix string) string {
@@ -55,7 +65,7 @@ func mountTitle(prefix string) string {
 	return b
 }
 
-func buildChildren(urlPrefix, dir string) ([]Node, error) {
+func buildChildren(urlPrefix, dir string, exclude []string) ([]Node, error) {
 	entries, err := os.ReadDir(dir)
 	if err != nil {
 		return nil, err
@@ -66,6 +76,9 @@ func buildChildren(urlPrefix, dir string) ([]Node, error) {
 		if strings.HasPrefix(name, "_") || strings.HasPrefix(name, ".") {
 			continue
 		}
+		if isExcluded(name, exclude) {
+			continue
+		}
 		full := filepath.Join(dir, name)
 		info, err := os.Stat(full)
 		if err != nil {
@@ -73,7 +86,7 @@ func buildChildren(urlPrefix, dir string) ([]Node, error) {
 		}
 		switch {
 		case info.IsDir():
-			children, err := buildChildren(urlPrefix+"/"+name, full)
+			children, err := buildChildren(urlPrefix+"/"+name, full, exclude)
 			if err != nil {
 				return nil, err
 			}

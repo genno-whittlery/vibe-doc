@@ -21,12 +21,27 @@ type Mount struct {
 
 // Config holds the merged configuration after parsing TOML + flags.
 type Config struct {
-	Port        int     `toml:"port"`
-	Log         string  `toml:"log"`
-	LogMaxBytes int64   `toml:"log_max_bytes"`
-	LogLevel    string  `toml:"log_level"`
-	Mounts      []Mount `toml:"mounts"`
-	Strict      bool    `toml:"strict"`
+	Port        int      `toml:"port"`
+	Log         string   `toml:"log"`
+	LogMaxBytes int64    `toml:"log_max_bytes"`
+	LogLevel    string   `toml:"log_level"`
+	Mounts      []Mount  `toml:"mounts"`
+	Strict      bool     `toml:"strict"`
+	Exclude     []string `toml:"exclude"`
+}
+
+// DefaultExclude is the directory-name skip-list applied by every tree
+// walker (search index, sidebar, shadow scan, sitemap, check). Users can
+// override by setting `exclude = [...]` in vibe-doc.toml; `exclude = []`
+// disables skipping entirely.
+var DefaultExclude = []string{
+	"node_modules",
+	".git",
+	".vitepress",
+	".docusaurus",
+	"dist",
+	".next",
+	".cache",
 }
 
 // Default returns the baseline config. CLI flag parsing layers on top of
@@ -37,6 +52,7 @@ func Default() Config {
 		Log:         "/tmp/vibe-doc.log",
 		LogMaxBytes: 1 << 20, // 1 MiB
 		LogLevel:    "info",
+		Exclude:     append([]string(nil), DefaultExclude...),
 	}
 }
 

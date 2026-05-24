@@ -14,7 +14,7 @@ func TestBuildBasic(t *testing.T) {
 	_ = os.WriteFile(filepath.Join(root, "sub/README.md"), []byte("# Sub Group"), 0o644)
 	_ = os.WriteFile(filepath.Join(root, "sub/leaf.md"), []byte("# Leaf"), 0o644)
 
-	tree, err := Build("Docs", "/", root)
+	tree, err := Build("Docs", "/", root, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -51,7 +51,7 @@ func TestHiddenAndUnderscorePrefixed(t *testing.T) {
 	_ = os.WriteFile(filepath.Join(root, "_private.md"), []byte("# Private"), 0o644)
 	_ = os.WriteFile(filepath.Join(root, "visible.md"), []byte("# Visible"), 0o644)
 	_ = os.WriteFile(filepath.Join(root, "hidden-by-fm.md"), []byte("+++\nhidden = true\n+++\n# H"), 0o644)
-	tree, err := Build("Docs", "/", root)
+	tree, err := Build("Docs", "/", root, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -64,6 +64,23 @@ func TestHiddenAndUnderscorePrefixed(t *testing.T) {
 	}
 	if contains(titles, "Private") || contains(titles, "H") {
 		t.Errorf("hidden file present in sidebar: %v", titles)
+	}
+}
+
+func TestBuildRespectsExclude(t *testing.T) {
+	root := t.TempDir()
+	_ = os.WriteFile(filepath.Join(root, "a.md"), []byte("# A"), 0o644)
+	_ = os.MkdirAll(filepath.Join(root, "node_modules/pkg"), 0o755)
+	_ = os.WriteFile(filepath.Join(root, "node_modules/pkg/README.md"), []byte("# nope"), 0o644)
+
+	tree, err := Build("Docs", "/", root, []string{"node_modules"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, c := range tree.Children {
+		if c.URL == "/node_modules/" {
+			t.Errorf("node_modules surfaced in sidebar despite exclude")
+		}
 	}
 }
 

@@ -23,12 +23,12 @@ type urlset struct {
 
 // Generate writes a sitemap.xml document to w. baseURL is the scheme+host
 // (e.g. "http://127.0.0.1:4000") without trailing slash. set provides the
-// mount tree to walk.
-func Generate(w io.Writer, baseURL string, set *mount.Set) error {
+// mount tree to walk; exclude is forwarded to walk.MD.
+func Generate(w io.Writer, baseURL string, set *mount.Set, exclude []string) error {
 	us := urlset{XMLNS: "http://www.sitemaps.org/schemas/sitemap/0.9"}
 	baseURL = strings.TrimRight(baseURL, "/")
 	for _, m := range set.Mounts() {
-		files, err := walk.MD(m.Root)
+		files, err := walk.MD(m.Root, exclude)
 		if err != nil {
 			continue
 		}

@@ -18,7 +18,7 @@ import (
 func (s *Server) rebuildSearchIndex() {
 	idx := search.New()
 	for _, m := range s.mounts.Mounts() {
-		files, err := walk.MD(m.Root)
+		files, err := walk.MD(m.Root, s.cfg.Exclude)
 		if err != nil {
 			s.log.Warn("walk %s: %v", m.Root, err)
 			continue

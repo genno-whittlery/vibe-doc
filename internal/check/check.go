@@ -37,7 +37,7 @@ func Run(cfg config.Config, w io.Writer, jsonOut bool) (int, error) {
 	set := mount.New(ms)
 	var issues []Issue
 	for _, m := range set.Mounts() {
-		files, _ := walk.MD(m.Root)
+		files, _ := walk.MD(m.Root, cfg.Exclude)
 		for _, f := range files {
 			absPath := filepath.Join(m.Root, f)
 			content, err := os.ReadFile(absPath)

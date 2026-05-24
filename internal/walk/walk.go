@@ -13,16 +13,26 @@ import (
 
 // MD returns paths to all .md files under root, relative to root, using
 // forward slashes. Symlinked directories are followed; symlink cycles are
-// detected and skipped.
-func MD(root string) ([]string, error) {
+// detected and skipped. Directory entries whose basename appears in
+// exclude are skipped (and not recursed into).
+func MD(root string, exclude []string) ([]string, error) {
 	root = filepath.Clean(root)
 	visited := map[string]struct{}{}
 	var out []string
-	err := walkDir(root, root, visited, &out)
+	err := walkDir(root, root, exclude, visited, &out)
 	return out, err
 }
 
-func walkDir(root, dir string, visited map[string]struct{}, out *[]string) error {
+func isExcluded(name string, exclude []string) bool {
+	for _, e := range exclude {
+		if e == name {
+			return true
+		}
+	}
+	return false
+}
+
+func walkDir(root, dir string, exclude []string, visited map[string]struct{}, out *[]string) error {
 	// De-dup by canonical (symlink-resolved) directory path.
 	canon, err := filepath.EvalSymlinks(dir)
 	if err != nil {
@@ -43,6 +53,9 @@ func walkDir(root, dir string, visited map[string]struct{}, out *[]string) error
 		return err
 	}
 	for _, e := range entries {
+		if isExcluded(e.Name(), exclude) {
+			continue
+		}
 		full := filepath.Join(dir, e.Name())
 		info, err := os.Stat(full) // follows symlinks
 		if err != nil {
@@ -50,7 +63,7 @@ func walkDir(root, dir string, visited map[string]struct{}, out *[]string) error
 		}
 		switch {
 		case info.IsDir():
-			if err := walkDir(root, full, visited, out); err != nil {
+			if err := walkDir(root, full, exclude, visited, out); err != nil {
 				return err
 			}
 		case strings.HasSuffix(e.Name(), ".md"):

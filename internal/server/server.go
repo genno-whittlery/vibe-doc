@@ -81,7 +81,7 @@ func New(cfg config.Config, log *logger.Logger) (*Server, error) {
 
 	// Spec §7: scan for shadow conflicts at startup and log each one. With
 	// --strict (cfg.Strict), promote to fatal.
-	conflicts := shadow.Scan(s.mounts)
+	conflicts := shadow.Scan(s.mounts, s.cfg.Exclude)
 	for _, c := range conflicts {
 		s.log.Warn("shadow %s: %s", c.Kind, c.Message)
 	}
@@ -107,7 +107,7 @@ func (s *Server) routes() {
 		w.Header().Set("Content-Type", "application/json")
 		enc := json.NewEncoder(w)
 		enc.SetIndent("", "  ")
-		_ = enc.Encode(shadow.Scan(s.mounts))
+		_ = enc.Encode(shadow.Scan(s.mounts, s.cfg.Exclude))
 	})
 	s.mux.HandleFunc("/__search", s.handleSearch)
 	s.mux.HandleFunc("/sitemap.xml", s.handleSitemap)
@@ -137,7 +137,7 @@ func (s *Server) Run(ctx context.Context) error {
 func (s *Server) rebuildSidebar() {
 	var trees []sidebar.Node
 	for _, m := range s.mounts.Mounts() {
-		tree, err := sidebar.Build(m.Display, m.URL, m.Root)
+		tree, err := sidebar.Build(m.Display, m.URL, m.Root, s.cfg.Exclude)
 		if err != nil {
 			s.log.Warn("sidebar %s: %v", m.URL, err)
 			continue

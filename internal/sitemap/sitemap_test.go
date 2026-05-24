@@ -19,7 +19,7 @@ func TestGenerateBasic(t *testing.T) {
 
 	set := mount.New([]mount.Mount{{URL: "/", Root: root}})
 	var buf bytes.Buffer
-	if err := Generate(&buf, "http://example.com", set); err != nil {
+	if err := Generate(&buf, "http://example.com", set, nil); err != nil {
 		t.Fatal(err)
 	}
 	out := buf.String()
@@ -44,7 +44,7 @@ func TestGenerateEmptyMount(t *testing.T) {
 	root := t.TempDir()
 	set := mount.New([]mount.Mount{{URL: "/", Root: root}})
 	var buf bytes.Buffer
-	if err := Generate(&buf, "http://example.com", set); err != nil {
+	if err := Generate(&buf, "http://example.com", set, nil); err != nil {
 		t.Fatal(err)
 	}
 	if !strings.Contains(buf.String(), "<urlset") {

@@ -45,9 +45,19 @@ type Conflict struct {
 	Message string
 }
 
+func isExcluded(name string, exclude []string) bool {
+	for _, e := range exclude {
+		if e == name {
+			return true
+		}
+	}
+	return false
+}
+
 // Scan walks the mount set and reports every conflict found. Order is
-// deterministic (mount order, then path order).
-func Scan(set *mount.Set) []Conflict {
+// deterministic (mount order, then path order). Directory basenames in
+// exclude are not traversed.
+func Scan(set *mount.Set, exclude []string) []Conflict {
 	var out []Conflict
 	mounts := set.Mounts()
 	// Same-root and overlap checks (O(n²) but n is small).
@@ -91,6 +101,9 @@ func Scan(set *mount.Set) []Conflict {
 			}
 			if !d.IsDir() {
 				return nil
+			}
+			if isExcluded(d.Name(), exclude) {
+				return filepath.SkipDir
 			}
 			readme := filepath.Join(p, "README.md")
 			index := filepath.Join(p, "index.md")
