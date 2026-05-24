@@ -68,6 +68,9 @@ vibe-doc version
   walked once via canonical-path visited set, cycles detected and skipped.
 - **`vibe-doc check`** — walks every mount, scans `[text](target)` links,
   reports absolute targets against mounts and relative targets against disk.
+- **Responsive layout** — 3-column desktop collapses to 2 (TOC hidden) at
+  960px, then to mobile single-column with a hamburger-toggle drawer
+  sidebar at 720px. Pure CSS + ~10 lines of inline JS.
 
 ## What's not in 0.1.0
 

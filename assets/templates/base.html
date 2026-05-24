@@ -8,8 +8,9 @@
   {{if .HasMath}}<link rel="stylesheet" href="/__static/katex.min.css">{{end}}
 </head>
 <body>
+  <button class="nav-toggle" aria-label="Toggle navigation" aria-controls="sidebar" aria-expanded="false">☰</button>
   <div class="layout">
-    <nav class="sidebar">
+    <nav class="sidebar" id="sidebar">
       <div class="searchbox"><input type="search" id="search" placeholder="search…"></div>
       {{template "sidebar" .Sidebar}}
     </nav>
@@ -27,5 +28,19 @@
   {{if .HasMath}}<script defer src="/__static/katex.min.js" onload="document.querySelectorAll('span.math').forEach(s=>{try{katex.render(s.textContent,s,{throwOnError:false,displayMode:s.classList.contains('math-block')})}catch(e){console.warn('katex:',e)}})"></script>{{end}}
   <script src="/__static/search.js" defer></script>
   <script src="/__static/auto-reload.js" defer></script>
+  <script>
+    document.addEventListener("click", function (e) {
+      var b = document.body, t = e.target;
+      if (t.closest(".nav-toggle")) {
+        var open = b.classList.toggle("nav-open");
+        var btn = document.querySelector(".nav-toggle");
+        if (btn) btn.setAttribute("aria-expanded", open ? "true" : "false");
+      } else if (b.classList.contains("nav-open") && !t.closest("nav.sidebar")) {
+        b.classList.remove("nav-open");
+        var btn2 = document.querySelector(".nav-toggle");
+        if (btn2) btn2.setAttribute("aria-expanded", "false");
+      }
+    });
+  </script>
 </body>
 </html>
