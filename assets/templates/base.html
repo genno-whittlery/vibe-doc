@@ -16,6 +16,14 @@
     </nav>
     <main>
       {{template "content" .}}
+      {{if .FolderEntries}}
+        <section class="folder-contents">
+          <h2>Folder contents</h2>
+          <ul>
+            {{range .FolderEntries}}<li{{if .IsDir}} class="dir"{{end}}><a href="{{.URL}}">{{.Title}}{{if .IsDir}}/{{end}}</a></li>{{end}}
+          </ul>
+        </section>
+      {{end}}
     </main>
     <aside class="toc">
       {{if .TOC}}

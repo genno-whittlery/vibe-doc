@@ -71,6 +71,10 @@ vibe-doc version
 - **Responsive layout** — 3-column desktop collapses to 2 (TOC hidden) at
   960px, then to mobile single-column with a hamburger-toggle drawer
   sidebar at 720px. Pure CSS + ~10 lines of inline JS.
+- **Folder contents appendix** — pages served as a folder's `README.md` /
+  `index.md` get an auto-generated list of sibling files + subdirectories
+  appended below the body. Opt-out via TOML frontmatter
+  `hide_siblings = true`.
 
 ## What's not in 0.1.0
 

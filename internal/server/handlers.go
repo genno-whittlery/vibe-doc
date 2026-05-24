@@ -19,13 +19,14 @@ import (
 var rendererSingleton = render.New()
 
 type pageData struct {
-	SiteTitle  string
-	Title      string
-	HTML       template.HTML
-	TOC        []render.TOCEntry
-	Sidebar    []sidebar.Node
-	HasMermaid bool
-	HasMath    bool
+	SiteTitle     string
+	Title         string
+	HTML          template.HTML
+	TOC           []render.TOCEntry
+	Sidebar       []sidebar.Node
+	FolderEntries []FolderEntry
+	HasMermaid    bool
+	HasMath       bool
 }
 
 func (s *Server) handlePage(w http.ResponseWriter, r *http.Request) {
@@ -83,14 +84,19 @@ func (s *Server) renderMarkdownFile(w http.ResponseWriter, r *http.Request, absP
 	s.mu.RLock()
 	sb := s.sidebar
 	s.mu.RUnlock()
+	var folder []FolderEntry
+	if !fm.HideSiblings {
+		folder = s.folderListing(absPath, r.URL.Path)
+	}
 	data := pageData{
-		SiteTitle:  "vibe-doc",
-		Title:      pickTitle(fm.Title, toc),
-		HTML:       template.HTML(htmlStr),
-		TOC:        toc,
-		Sidebar:    sb,
-		HasMermaid: strings.Contains(htmlStr, `class="mermaid"`),
-		HasMath:    strings.Contains(htmlStr, `class="math`),
+		SiteTitle:     "vibe-doc",
+		Title:         pickTitle(fm.Title, toc),
+		HTML:          template.HTML(htmlStr),
+		TOC:           toc,
+		Sidebar:       sb,
+		FolderEntries: folder,
+		HasMermaid:    strings.Contains(htmlStr, `class="mermaid"`),
+		HasMath:       strings.Contains(htmlStr, `class="math`),
 	}
 
 	var buf bytes.Buffer

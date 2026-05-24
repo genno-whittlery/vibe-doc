@@ -13,10 +13,11 @@ import (
 
 // Front holds the parsed front-matter fields.
 type Front struct {
-	Title  string   `toml:"title"`
-	Order  int      `toml:"order"`
-	Hidden bool     `toml:"hidden"`
-	Tags   []string `toml:"tags"`
+	Title        string   `toml:"title"`
+	Order        int      `toml:"order"`
+	Hidden       bool     `toml:"hidden"`
+	Tags         []string `toml:"tags"`
+	HideSiblings bool     `toml:"hide_siblings"`
 }
 
 var (
