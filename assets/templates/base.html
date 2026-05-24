@@ -15,6 +15,19 @@
       {{template "sidebar" .Sidebar}}
     </nav>
     <main>
+      <div class="toolbar" role="toolbar" aria-label="Page tools">
+        <button id="tts-read" type="button" data-state="idle">▶ Read</button>
+        <button id="tts-stop" type="button">⏹ Stop</button>
+        <label class="tts-rate-label">Speed
+          <select id="tts-rate">
+            <option value="0.8">0.8×</option>
+            <option value="1" selected>1×</option>
+            <option value="1.25">1.25×</option>
+            <option value="1.5">1.5×</option>
+            <option value="2">2×</option>
+          </select>
+        </label>
+      </div>
       {{template "content" .}}
       {{if .FolderEntries}}
         <section class="folder-contents">
@@ -36,6 +49,7 @@
   {{if .HasMath}}<script defer src="/__static/katex.min.js" onload="document.querySelectorAll('span.math').forEach(s=>{try{katex.render(s.textContent,s,{throwOnError:false,displayMode:s.classList.contains('math-block')})}catch(e){console.warn('katex:',e)}})"></script>{{end}}
   <script src="/__static/search.js" defer></script>
   <script src="/__static/auto-reload.js" defer></script>
+  <script src="/__static/tts.js" defer></script>
   <script>
     document.addEventListener("click", function (e) {
       var b = document.body, t = e.target;

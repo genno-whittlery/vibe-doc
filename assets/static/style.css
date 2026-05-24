@@ -29,6 +29,39 @@ th, td { border: 1px solid var(--border); padding: 0.4rem 0.8rem; }
 .searchbox input { background: var(--code-bg); color: var(--fg); border: 1px solid var(--border); padding: 0.4rem 0.6rem; border-radius: 4px; width: 100%; }
 mark { background: var(--accent); color: var(--bg); padding: 0 0.2rem; }
 
+.toolbar {
+  display: flex;
+  gap: 0.5rem;
+  align-items: center;
+  flex-wrap: wrap;
+  margin: 0 0 1.5rem;
+  padding: 0.5rem 0.75rem;
+  background: var(--code-bg);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  font-size: 0.9rem;
+}
+.toolbar button {
+  background: var(--bg);
+  color: var(--fg);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  padding: 0.35rem 0.7rem;
+  font: inherit;
+  cursor: pointer;
+}
+.toolbar button:hover { border-color: var(--link); color: var(--link); }
+.toolbar button[data-state="playing"] { border-color: var(--accent); color: var(--accent); }
+.toolbar .tts-rate-label { display: inline-flex; align-items: center; gap: 0.4rem; color: var(--muted); margin-left: auto; }
+.toolbar select {
+  background: var(--bg);
+  color: var(--fg);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  padding: 0.25rem 0.4rem;
+  font: inherit;
+}
+
 section.folder-contents { margin-top: 3rem; padding-top: 1.5rem; border-top: 1px solid var(--border); }
 section.folder-contents h2 { font-size: 0.95rem; color: var(--muted); margin: 0 0 0.6rem; text-transform: uppercase; letter-spacing: 0.05em; }
 section.folder-contents ul { list-style: none; padding: 0; margin: 0; }

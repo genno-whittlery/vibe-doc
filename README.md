@@ -75,6 +75,10 @@ vibe-doc version
   `index.md` get an auto-generated list of sibling files + subdirectories
   appended below the body. Opt-out via TOML frontmatter
   `hide_siblings = true`.
+- **Page toolbar + text-to-speech** — a thin toolbar at the top of every
+  page hosts browser-native TTS controls (Read / Stop / speed selector).
+  Uses `window.speechSynthesis`; skips `<pre>` and `<code>` blocks; quality
+  varies by OS/browser. Toolbar hides itself on browsers without TTS.
 
 ## What's not in 0.1.0
 
